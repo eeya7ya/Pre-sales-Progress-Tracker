@@ -8,6 +8,7 @@ import {
   pgEnum,
   integer,
 } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
 export const projectStatusEnum = pgEnum("project_status", [
   "active",
@@ -35,3 +36,14 @@ export const projects = pgTable("projects", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const usersRelations = relations(users, ({ many }) => ({
+  projects: many(projects),
+}));
+
+export const projectsRelations = relations(projects, ({ one }) => ({
+  user: one(users, {
+    fields: [projects.userId],
+    references: [users.id],
+  }),
+}));
