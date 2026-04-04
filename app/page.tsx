@@ -16,11 +16,7 @@ export default async function Home() {
           <h1 className="mb-2 text-xl font-semibold text-red-400">
             Unable to load data
           </h1>
-          <p className="text-sm text-red-300/70">
-            {message.includes("DATABASE_URL") || message.includes("neon") || message.includes("connect")
-              ? "Database connection failed. Check that DATABASE_URL is set correctly in your environment."
-              : message}
-          </p>
+          <p className="text-sm text-red-300/70">{message}</p>
         </div>
       </div>
     );
