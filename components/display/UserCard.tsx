@@ -1,54 +1,59 @@
-"use client";
-
 import type { UserWithProjects } from "@/lib/types";
 import type { Project } from "@/lib/types";
 
-type StatusConfig = {
+type Accent = { bar: string; light: string; text: string };
+
+type StatusMeta = {
   label: string;
-  dot: string;
-  text: string;
-  border: string;
-  bg: string;
   icon: string;
+  dot: string;
+  pill: string;
+  rowBg: string;
+  rowBorder: string;
+  iconColor: string;
 };
 
-function getStatusConfig(status: Project["status"]): StatusConfig {
+function statusMeta(status: Project["status"]): StatusMeta {
   switch (status) {
     case "active":
       return {
         label: "Active",
-        dot: "bg-emerald-400",
-        text: "text-emerald-300",
-        border: "border-emerald-400/40",
-        bg: "bg-emerald-400/10",
         icon: "▶",
+        dot: "bg-emerald-500",
+        pill: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+        rowBg: "bg-emerald-50",
+        rowBorder: "border-emerald-200",
+        iconColor: "text-emerald-600",
       };
     case "upcoming":
       return {
         label: "Pending",
-        dot: "bg-amber-400",
-        text: "text-amber-300",
-        border: "border-amber-400/40",
-        bg: "bg-amber-400/10",
         icon: "○",
+        dot: "bg-amber-400",
+        pill: "bg-amber-100 text-amber-700 border border-amber-200",
+        rowBg: "bg-amber-50",
+        rowBorder: "border-amber-200",
+        iconColor: "text-amber-500",
       };
     case "completed":
       return {
         label: "Completed",
-        dot: "bg-slate-400",
-        text: "text-slate-400",
-        border: "border-slate-400/30",
-        bg: "bg-slate-400/10",
         icon: "✓",
+        dot: "bg-gray-400",
+        pill: "bg-gray-100 text-gray-600 border border-gray-200",
+        rowBg: "bg-gray-50",
+        rowBorder: "border-gray-200",
+        iconColor: "text-gray-500",
       };
     case "lost":
       return {
         label: "Lost",
-        dot: "bg-red-400",
-        text: "text-red-400",
-        border: "border-red-400/30",
-        bg: "bg-red-400/10",
         icon: "✕",
+        dot: "bg-red-400",
+        pill: "bg-red-100 text-red-700 border border-red-200",
+        rowBg: "bg-red-50",
+        rowBorder: "border-red-200",
+        iconColor: "text-red-500",
       };
   }
 }
@@ -58,7 +63,21 @@ function isOverdue(deadline: string | null): boolean {
   return new Date(deadline) < new Date(new Date().toDateString());
 }
 
-export default function UserCard({ user }: { user: UserWithProjects }) {
+function fmtDate(d: string, opts?: Intl.DateTimeFormatOptions) {
+  return new Date(d).toLocaleDateString("en-GB", opts ?? {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export default function UserCard({
+  user,
+  accent,
+}: {
+  user: UserWithProjects;
+  accent: Accent;
+}) {
   const today = new Date();
   const dateStr = today.toLocaleDateString("en-GB", {
     weekday: "long",
@@ -71,101 +90,94 @@ export default function UserCard({ user }: { user: UserWithProjects }) {
     minute: "2-digit",
   });
 
-  // Primary project for RHS: first active, then first upcoming, then any
-  const activeProjects = user.projects.filter((p) => p.status === "active");
-  const primaryProject =
-    activeProjects[0] ??
+  const active    = user.projects.filter((p) => p.status === "active");
+  const completed = user.projects.filter((p) => p.status === "completed");
+  const total     = user.projects.length;
+
+  // Primary project for RHS
+  const primary =
+    active[0] ??
     user.projects.find((p) => p.status === "upcoming") ??
     user.projects[0] ??
     null;
 
-  const sidebarProjects = user.projects.filter(
-    (p) => p.id !== primaryProject?.id
-  );
-
-  const completedCount = user.projects.filter(
-    (p) => p.status === "completed"
-  ).length;
-  const totalCount = user.projects.length;
+  const sidebar = user.projects.filter((p) => p.id !== primary?.id);
 
   return (
-    <div className="flex flex-col h-full gap-0">
+    <div className="flex flex-col h-full overflow-hidden">
+
       {/* ── HEADER ────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-8 py-5 bg-black/20 backdrop-blur-sm border-b border-white/10 rounded-t-2xl">
-        {/* Left: name + date */}
-        <div className="flex flex-col gap-1">
-          <h2 className="text-4xl font-black text-white tracking-tight leading-none">
+      <div className={`shrink-0 ${accent.bar} px-6 py-4 flex items-center justify-between`}>
+        {/* Name + date */}
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-3xl font-black text-white tracking-tight leading-none">
             {user.name}
           </h2>
-          <p className="text-white/50 text-sm font-medium">
-            {dateStr} &nbsp;·&nbsp; {timeStr}
+          <p className="text-white/70 text-sm font-medium mt-1">
+            {dateStr}&nbsp;&nbsp;·&nbsp;&nbsp;{timeStr}
           </p>
         </div>
 
-        {/* Right: summary chips */}
+        {/* Stats */}
         <div className="flex items-center gap-3">
-          <div className="flex flex-col items-center bg-emerald-400/15 border border-emerald-400/30 rounded-xl px-5 py-2.5">
-            <span className="text-emerald-300 text-2xl font-black leading-none">
-              {activeProjects.length}
-            </span>
-            <span className="text-emerald-400/70 text-xs font-semibold uppercase tracking-wide mt-0.5">
-              Active
-            </span>
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 text-center min-w-[80px]">
+            <p className="text-white text-2xl font-black leading-none">{active.length}</p>
+            <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mt-0.5">Active</p>
           </div>
-          <div className="flex flex-col items-center bg-slate-400/10 border border-slate-400/25 rounded-xl px-5 py-2.5">
-            <span className="text-slate-300 text-2xl font-black leading-none">
-              {completedCount} / {totalCount}
-            </span>
-            <span className="text-slate-400/70 text-xs font-semibold uppercase tracking-wide mt-0.5">
-              Completed
-            </span>
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 text-center min-w-[80px]">
+            <p className="text-white text-2xl font-black leading-none">
+              {completed.length}<span className="text-white/50 text-lg font-normal"> / {total}</span>
+            </p>
+            <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mt-0.5">Done</p>
           </div>
         </div>
       </div>
 
-      {/* ── BODY: LHS + RHS ────────────────────────────────────────── */}
-      <div className="flex flex-1 min-h-0 gap-0">
-        {/* ── LHS: All other projects ────────────────────────────────── */}
-        <div className="w-72 shrink-0 flex flex-col bg-black/15 border-r border-white/10 rounded-bl-2xl overflow-y-auto">
-          <div className="px-5 py-4 border-b border-white/10">
-            <p className="text-xs font-bold uppercase tracking-widest text-white/35">
-              Other Projects
+      {/* ── BODY ──────────────────────────────────────────────────── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
+        {/* LHS — Project list sidebar ─────────────────────────────── */}
+        <div className="w-64 shrink-0 border-r border-gray-200 bg-gray-50 flex flex-col overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200 shrink-0">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+              All Projects
             </p>
           </div>
 
-          {sidebarProjects.length === 0 && (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-white/25 text-sm italic text-center px-4">
-                No other projects
-              </p>
-            </div>
-          )}
+          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-1.5">
+            {user.projects.length === 0 && (
+              <p className="text-gray-400 text-sm italic text-center pt-6">No projects</p>
+            )}
 
-          <div className="flex flex-col gap-1.5 p-3">
-            {sidebarProjects.map((p) => {
-              const cfg = getStatusConfig(p.status);
+            {user.projects.map((p) => {
+              const m       = statusMeta(p.status);
+              const isCurr  = p.id === primary?.id;
               return (
                 <div
                   key={p.id}
-                  className={`flex items-center gap-3 rounded-xl px-4 py-3 border ${cfg.bg} ${cfg.border}`}
+                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 border transition-all ${
+                    isCurr
+                      ? `${m.rowBg} ${m.rowBorder} ring-2 ring-offset-1 ring-indigo-300`
+                      : `${m.rowBg} ${m.rowBorder}`
+                  }`}
                 >
-                  {/* Status icon */}
-                  <span
-                    className={`text-xs font-bold shrink-0 w-4 text-center ${cfg.text}`}
-                  >
-                    {cfg.icon}
+                  {/* status icon */}
+                  <span className={`text-xs font-bold w-4 text-center shrink-0 ${m.iconColor}`}>
+                    {m.icon}
                   </span>
 
-                  {/* Title */}
-                  <span className="flex-1 text-sm font-medium text-white/80 truncate leading-snug">
+                  {/* title */}
+                  <span
+                    className={`flex-1 text-sm font-medium truncate ${
+                      isCurr ? "text-gray-900" : "text-gray-700"
+                    }`}
+                  >
                     {p.title}
                   </span>
 
-                  {/* Status label */}
-                  <span
-                    className={`text-xs font-bold shrink-0 ${cfg.text} ml-1`}
-                  >
-                    {cfg.label}
+                  {/* status pill */}
+                  <span className={`text-xs font-semibold shrink-0 px-1.5 py-0.5 rounded-full ${m.pill}`}>
+                    {m.label}
                   </span>
                 </div>
               );
@@ -173,92 +185,87 @@ export default function UserCard({ user }: { user: UserWithProjects }) {
           </div>
         </div>
 
-        {/* ── RHS: Current / Primary project ─────────────────────────── */}
-        <div className="flex-1 flex flex-col min-w-0 bg-black/10 rounded-br-2xl">
+        {/* RHS — Active project detail ─────────────────────────────── */}
+        <div className="flex-1 min-w-0 flex flex-col bg-white overflow-hidden">
+
           {/* Section label */}
-          <div className="px-8 py-4 border-b border-white/10">
-            <p className="text-xs font-bold uppercase tracking-widest text-white/35">
-              {primaryProject?.status === "active"
-                ? "Current Project"
-                : primaryProject
+          <div className="px-8 py-3 border-b border-gray-100 shrink-0 flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+              {primary?.status === "active"
+                ? "Currently Working On"
+                : primary
                 ? "Next Up"
-                : "No Project"}
+                : "—"}
             </p>
+            {primary && (
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusMeta(primary.status).pill}`}>
+                {statusMeta(primary.status).label}
+              </span>
+            )}
           </div>
 
-          {!primaryProject ? (
+          {/* Content */}
+          {!primary ? (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-white/25 text-xl italic">No projects yet</p>
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl text-gray-300">📂</span>
+                </div>
+                <p className="text-gray-400 text-base">No projects yet</p>
+              </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col gap-6 px-8 py-7 overflow-y-auto">
-              {/* Project title + deadline */}
-              <div className="flex items-start justify-between gap-6 flex-wrap">
-                <h3 className="text-5xl font-black text-white leading-tight tracking-tight flex-1 min-w-0">
-                  {primaryProject.title}
+            <div className="flex-1 overflow-y-auto px-8 py-6 flex flex-col gap-6">
+
+              {/* Title + deadline */}
+              <div className="flex items-start justify-between gap-6">
+                <h3 className="text-5xl font-black text-gray-900 leading-tight tracking-tight flex-1 min-w-0">
+                  {primary.title}
                 </h3>
 
-                {primaryProject.deadline &&
-                  (() => {
-                    const overdue = isOverdue(primaryProject.deadline);
-                    return (
-                      <span
-                        className={`shrink-0 self-start inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold ${
-                          overdue
-                            ? "bg-red-500/70 text-white border border-red-400/50"
-                            : "bg-white/10 text-white/90 border border-white/20"
-                        }`}
-                      >
-                        <span>{overdue ? "⚠" : "📅"}</span>
-                        <span>
-                          {overdue ? "Overdue · " : "Due "}
-                          {new Date(
-                            primaryProject.deadline
-                          ).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </span>
+                {primary.deadline && (() => {
+                  const overdue = isOverdue(primary.deadline);
+                  return (
+                    <div
+                      className={`shrink-0 self-start flex flex-col items-end gap-1 px-5 py-3 rounded-xl border ${
+                        overdue
+                          ? "bg-red-50 border-red-200"
+                          : "bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      <span className={`text-xs font-bold uppercase tracking-widest ${overdue ? "text-red-400" : "text-gray-400"}`}>
+                        {overdue ? "⚠ Overdue" : "Due date"}
                       </span>
-                    );
-                  })()}
+                      <span className={`text-xl font-black ${overdue ? "text-red-600" : "text-gray-800"}`}>
+                        {fmtDate(primary.deadline)}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Status badge */}
-              {(() => {
-                const cfg = getStatusConfig(primaryProject.status);
-                return (
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full ${cfg.dot} ${
-                        primaryProject.status === "active"
-                          ? "shadow-[0_0_8px_2px_rgba(52,211,153,0.5)]"
-                          : ""
-                      }`}
-                    />
-                    <span className={`text-sm font-bold ${cfg.text}`}>
-                      {cfg.label}
-                    </span>
-                  </div>
-                );
-              })()}
+              {/* Active glow dot */}
+              {primary.status === "active" && (
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                  </span>
+                  <span className="text-sm font-semibold text-emerald-600">In progress</span>
+                </div>
+              )}
 
               {/* Divider */}
-              <div className="h-px bg-white/10" />
+              <div className="h-px bg-gray-100" />
 
               {/* Notes */}
-              {primaryProject.notes ? (
-                <div className="flex flex-col gap-3">
-                  <p className="text-xs font-bold uppercase tracking-widest text-white/30">
-                    Notes
-                  </p>
-                  <p className="text-white/75 text-lg leading-relaxed">
-                    {primaryProject.notes}
-                  </p>
+              {primary.notes ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Notes</p>
+                  <p className="text-gray-700 text-lg leading-relaxed">{primary.notes}</p>
                 </div>
               ) : (
-                <p className="text-white/20 text-base italic">No notes added</p>
+                <p className="text-gray-300 text-sm italic">No notes added for this project.</p>
               )}
             </div>
           )}
