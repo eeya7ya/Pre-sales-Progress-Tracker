@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { UserWithProjects } from "@/lib/types";
 import UserCard from "./UserCard";
-import CountdownBar from "./CountdownBar";
 
 const STORAGE_KEY = "display_interval_ms";
 const DEFAULT_INTERVAL = 30_000;
-const POLL_INTERVAL = 5_000;
+const POLL_INTERVAL = 3_000;
 
 export default function DisplayScreen({
   initialData,
@@ -40,7 +39,7 @@ export default function DisplayScreen({
     return () => clearInterval(id);
   }, [data.length, intervalMs]);
 
-  // Polling
+  // Auto-refresh data every 3 seconds
   useEffect(() => {
     const id = setInterval(async () => {
       try {
@@ -50,7 +49,7 @@ export default function DisplayScreen({
           setData(fresh);
         }
       } catch {
-        // silent — we keep showing cached data
+        // silent — keep showing cached data
       }
     }, POLL_INTERVAL);
     return () => clearInterval(id);
@@ -76,26 +75,30 @@ export default function DisplayScreen({
   }
 
   const current = data[index];
+  const pct = Math.max(0, Math.min(100, (timeLeft / intervalMs) * 100));
 
-  // Gradient backgrounds cycling per user
-  const gradients = [
-    "from-indigo-900 via-blue-900 to-slate-900",
-    "from-violet-900 via-purple-900 to-slate-900",
-    "from-cyan-900 via-teal-900 to-slate-900",
-    "from-emerald-900 via-green-900 to-slate-900",
-    "from-rose-900 via-pink-900 to-slate-900",
-    "from-orange-900 via-amber-900 to-slate-900",
+  // Per-user accent colors (light-theme friendly)
+  const accents = [
+    { bar: "bg-indigo-600", light: "bg-indigo-50", text: "text-indigo-700" },
+    { bar: "bg-violet-600", light: "bg-violet-50", text: "text-violet-700" },
+    { bar: "bg-cyan-600",   light: "bg-cyan-50",   text: "text-cyan-700"   },
+    { bar: "bg-emerald-600",light: "bg-emerald-50",text: "text-emerald-700"},
+    { bar: "bg-rose-600",   light: "bg-rose-50",   text: "text-rose-700"   },
+    { bar: "bg-amber-600",  light: "bg-amber-50",  text: "text-amber-700"  },
   ];
-  const gradient = gradients[index % gradients.length];
+  const accent = accents[index % accents.length];
 
   if (data.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+      <div className="h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white/60 text-2xl font-light">No users yet.</p>
-          <p className="text-white/30 text-base mt-2">
-            Add users at <span className="font-mono">/admin</span> and projects at{" "}
-            <span className="font-mono">/input</span>.
+          <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl text-gray-400">📋</span>
+          </div>
+          <p className="text-gray-500 text-xl font-semibold">No users yet</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Add users at <span className="font-mono bg-gray-100 px-1 rounded">/admin</span>{" "}
+            and projects at <span className="font-mono bg-gray-100 px-1 rounded">/input</span>
           </p>
         </div>
       </div>
@@ -103,74 +106,89 @@ export default function DisplayScreen({
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${gradient} transition-all duration-700 flex flex-col`}>
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-8 pt-5 pb-3 shrink-0">
-        <span className="text-white/30 text-xs font-bold uppercase tracking-widest">
+    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
+      {/* ── Slim top control bar ─────────────────────────────────── */}
+      <div className="h-10 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0">
+        <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">
           Pre-sales Progress Tracker
         </span>
-        <div className="flex items-center gap-3">
-          <span className="text-white/25 text-xs font-medium">
-            {index + 1} / {data.length}
+
+        <div className="flex items-center gap-2">
+          {/* Auto-refresh indicator */}
+          <span className="flex items-center gap-1.5 text-gray-400 text-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live
           </span>
+
+          {/* Timer / settings toggle */}
           <button
             onClick={() => setSettingsOpen(!settingsOpen)}
-            className="text-white/30 hover:text-white/60 transition-colors text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-1.5"
+            className="text-gray-400 hover:text-gray-700 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 transition-colors"
           >
             ⏱ {Math.ceil(timeLeft / 1000)}s
           </button>
+
+          {/* Pagination */}
+          <span className="text-gray-400 text-xs font-medium w-10 text-center">
+            {index + 1} / {data.length}
+          </span>
+
           <button
             onClick={goPrev}
-            className="bg-white/10 hover:bg-white/20 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors text-sm"
+            className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm transition-colors"
           >
             ‹
           </button>
           <button
             onClick={goNext}
-            className="bg-white/10 hover:bg-white/20 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors text-sm"
+            className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center text-sm transition-colors"
           >
             ›
           </button>
         </div>
       </div>
 
-      {/* Settings drawer */}
+      {/* Settings popover */}
       {settingsOpen && (
-        <div className="mx-8 mb-3 bg-black/30 backdrop-blur-sm rounded-xl px-6 py-4 flex items-center gap-4">
-          <label className="text-white/60 text-sm whitespace-nowrap">
-            Rotation interval (seconds)
-          </label>
+        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 shrink-0">
+          <label className="text-gray-600 text-sm">Rotation interval (seconds)</label>
           <input
             type="number"
             min={5}
             max={300}
             value={inputSec}
             onChange={(e) => setInputSec(e.target.value)}
-            className="w-24 rounded-lg bg-white/10 border border-white/20 text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
           <button
             onClick={applyInterval}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm transition-colors"
+            className="bg-indigo-600 text-white text-sm px-3 py-1 rounded hover:bg-indigo-700 transition-colors"
           >
             Apply
           </button>
           <button
             onClick={() => setSettingsOpen(false)}
-            className="text-white/40 hover:text-white/70 text-sm"
+            className="text-gray-400 hover:text-gray-600 text-sm"
           >
             Cancel
           </button>
         </div>
       )}
 
-      {/* Main card */}
-      <div className="flex-1 px-8 pb-6 min-h-0 flex flex-col">
-        <div className="flex-1 min-h-0 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden flex flex-col">
-          {current && <UserCard user={current} />}
+      {/* ── Main content (fills remaining height) ───────────────── */}
+      <div className="flex-1 p-3 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+          {current && <UserCard user={current} accent={accent} />}
         </div>
       </div>
 
-      <CountdownBar timeLeft={timeLeft} total={intervalMs} />
+      {/* ── Progress bar ─────────────────────────────────────────── */}
+      <div className="h-1 bg-gray-200 shrink-0">
+        <div
+          className="h-full bg-indigo-500 transition-all duration-100 ease-linear"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }
