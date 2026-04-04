@@ -101,7 +101,6 @@ export default function UserCard({
     user.projects[0] ??
     null;
 
-  const sidebar = user.projects.filter((p) => p.id !== primary?.id);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
